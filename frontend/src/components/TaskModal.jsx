@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
+import toast from 'react-hot-toast';
 
-const TaskModal = ({ task, onClose, onUpdate }) => {
+const TaskModal = ({ task, members = [], onClose, onUpdate }) => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -9,8 +10,16 @@ const TaskModal = ({ task, onClose, onUpdate }) => {
     title: task.title || '',
     description: task.description || '',
     priority: task.priority || 'Medium',
-    dueDate: task.dueDate ? task.dueDate.split('T')[0] : ''
+    dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+    assignedTo: task.assignedTo?._id || ''
   });
+
+  const hasChanges = 
+    editForm.title !== (task.title || '') ||
+    editForm.description !== (task.description || '') ||
+    editForm.priority !== (task.priority || 'Medium') ||
+    editForm.dueDate !== (task.dueDate ? task.dueDate.split('T')[0] : '') ||
+    editForm.assignedTo !== (task.assignedTo?._id || '');
 
   useEffect(() => {
     if (task) {
@@ -32,11 +41,17 @@ const TaskModal = ({ task, onClose, onUpdate }) => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+    if (!editForm.title.trim()) {
+      toast.error('Task title is mandatory.');
+      return;
+    }
     try {
       await api.put(`/tasks/${task._id}`, editForm);
       setIsEditing(false);
+      toast.success('Task updated successfully!');
       if (onUpdate) onUpdate(); // Trigger refresh on parent
     } catch (err) {
+      toast.error('Failed to update task.');
       console.error(err);
     }
   };
@@ -64,20 +79,33 @@ const TaskModal = ({ task, onClose, onUpdate }) => {
               placeholder="Description"
             />
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <select value={editForm.priority} onChange={e => setEditForm({...editForm, priority: e.target.value})} style={{ padding: '0.5rem' }}>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
+              <select value={editForm.priority} onChange={e => setEditForm({...editForm, priority: e.target.value})} style={{ padding: '0.5rem', flex: 1 }}>
+                <option value="Low">Low Priority</option>
+                <option value="Medium">Medium Priority</option>
+                <option value="High">High Priority</option>
               </select>
               <input 
                 type="date" 
                 value={editForm.dueDate} 
                 onChange={e => setEditForm({...editForm, dueDate: e.target.value})} 
-                style={{ padding: '0.5rem' }}
+                style={{ padding: '0.5rem', flex: 1 }}
               />
+              <select value={editForm.assignedTo} onChange={e => setEditForm({...editForm, assignedTo: e.target.value})} style={{ padding: '0.5rem', flex: 1 }}>
+                <option value="">Unassigned</option>
+                {members.map(m => (
+                  <option key={m._id} value={m._id}>{m.name}</option>
+                ))}
+              </select>
             </div>
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button type="submit" className="btn">Save Changes</button>
+              <button 
+                type="submit" 
+                className="btn" 
+                disabled={!hasChanges}
+                style={{ opacity: hasChanges ? 1 : 0.5, cursor: hasChanges ? 'pointer' : 'not-allowed' }}
+              >
+                Save Changes
+              </button>
               <button type="button" className="btn" style={{ background: 'var(--text-muted)' }} onClick={() => setIsEditing(false)}>Cancel</button>
             </div>
           </form>

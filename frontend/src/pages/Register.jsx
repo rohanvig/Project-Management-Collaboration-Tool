@@ -16,6 +16,16 @@ const Register = () => {
     e.preventDefault();
     setError('');
     
+    // Validations
+    if (!/^[a-zA-Z\s]+$/.test(name)) {
+      setError('Name should only contain letters and spaces.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    
     try {
       const response = await api.post('/auth/register', { name, email, password });
       if (response.data.success) {

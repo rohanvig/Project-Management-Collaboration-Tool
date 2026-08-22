@@ -71,7 +71,10 @@ export const updateTask = async (req, res) => {
     const updatedTask = await Task.findByIdAndUpdate(id, {
       ...updates,
       $push: { activityHistory: { action: historyAction, userId: req.user._id } }
-    }, { new: true, runValidators: true });
+    }, { new: true, runValidators: true })
+    .populate('assignedTo', 'name email')
+    .populate('createdBy', 'name email')
+    .populate('activityHistory.userId', 'name');
 
     res.json({ success: true, data: updatedTask });
   } catch (error) {

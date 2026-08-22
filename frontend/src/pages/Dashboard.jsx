@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../utils/api';
 import Navbar from '../components/Navbar';
 
@@ -7,6 +8,7 @@ const Dashboard = () => {
   const [projects, setProjects] = useState([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [projectToDelete, setProjectToDelete] = useState(null);
 
   const fetchProjects = async () => {
     try {
@@ -29,18 +31,26 @@ const Dashboard = () => {
       setName('');
       setDescription('');
       fetchProjects(); // Refresh the list
+      toast.success('Project created!');
     } catch (err) {
+      toast.error('Failed to create project');
       console.error('Failed to create project', err);
     }
   };
 
-  const handleDeleteProject = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this project?')) return;
+  const handleDeleteProject = (id) => {
+    setProjectToDelete(id);
+  };
+
+  const confirmDeleteProject = async () => {
     try {
-      await api.delete(`/projects/${id}`);
+      await api.delete(`/projects/${projectToDelete}`);
       fetchProjects();
+      toast.success('Project deleted');
+      setProjectToDelete(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete project');
+      toast.error(err.response?.data?.message || 'Failed to delete project');
+      setProjectToDelete(null);
     }
   };
 
@@ -95,6 +105,19 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {projectToDelete && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
+          <div className="card" style={{ width: '400px', backgroundColor: 'var(--card-bg)' }}>
+            <h3 style={{ marginTop: 0 }}>Confirm Delete</h3>
+            <p>Are you sure you want to permanently delete this project? This cannot be undone.</p>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+              <button className="btn" style={{ background: 'var(--text-muted)' }} onClick={() => setProjectToDelete(null)}>Cancel</button>
+              <button className="btn" style={{ background: '#ef4444' }} onClick={confirmDeleteProject}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -51,10 +51,10 @@ const seedDatabase = async () => {
       { title: 'Submit Assignment', description: 'Zip files and submit', boardId: board._id, status: 'Todo', createdBy: user._id },
     ]);
 
-    console.log('✅ Data Migration / Seeding completed successfully!');
+    console.log(' Data Migration / Seeding completed successfully!');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Data Migration failed:', error);
+    console.error('Data Migration failed:', error);
     process.exit(1);
   }
 };

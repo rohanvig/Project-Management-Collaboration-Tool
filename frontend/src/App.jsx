@@ -1,6 +1,7 @@
 
 import React, { useContext } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthContext } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -15,6 +16,7 @@ function App() {
 
   return (
     <div className="app">
+      <Toaster position="top-right" />
       <Routes>
         <Route 
           path="/login" 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import toast from 'react-hot-toast';
 import api from '../utils/api';
 import Navbar from '../components/Navbar';
 import TaskModal from '../components/TaskModal';
@@ -18,6 +19,9 @@ const ProjectBoard = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalTasks, setTotalTasks] = useState(0);
+  const [projectMembers, setProjectMembers] = useState([]);
 
   const fetchBoardAndTasks = async () => {
     try {
@@ -30,12 +34,18 @@ const ProjectBoard = () => {
       }
       setBoard(currentBoard);
 
-      let url = `/tasks?boardId=${currentBoard._id}`;
+      // Fetch project details for members
+      const projRes = await api.get('/projects');
+      const project = projRes.data.data.find(p => p._id === projectId);
+      if (project) setProjectMembers(project.members);
+
+      let url = `/tasks?boardId=${currentBoard._id}&page=${page}&limit=20`;
       if (search) url += `&search=${search}`;
       if (priorityFilter) url += `&priority=${priorityFilter}`;
 
       const taskRes = await api.get(url);
       const allTasks = taskRes.data.data;
+      setTotalTasks(taskRes.data.pagination?.total || 0);
       
       const grouped = { 'Todo': [], 'In Progress': [], 'Done': [] };
       allTasks.forEach(task => {
@@ -50,7 +60,7 @@ const ProjectBoard = () => {
 
   useEffect(() => {
     fetchBoardAndTasks();
-  }, [projectId, search, priorityFilter]);
+  }, [projectId, search, priorityFilter, page]);
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -60,7 +70,9 @@ const ProjectBoard = () => {
       const newTask = res.data.data;
       setTasks(prev => ({ ...prev, 'Todo': [...prev['Todo'], newTask] }));
       setNewTaskTitle('');
+      toast.success('Task created');
     } catch (err) {
+      toast.error('Failed to create task');
       console.error('Failed to create task', err);
     }
   };
@@ -70,10 +82,10 @@ const ProjectBoard = () => {
     if (!inviteEmail.trim()) return;
     try {
       await api.post(`/projects/${projectId}/invite`, { email: inviteEmail });
-      alert('User invited successfully!');
+      toast.success('User invited successfully!');
       setInviteEmail('');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to invite user');
+      toast.error(err.response?.data?.message || 'Failed to invite user');
     }
   };
 
@@ -199,9 +211,12 @@ const ProjectBoard = () => {
                               }}
                             >
                               <h4 style={{ margin: 0, fontSize: '1rem' }}>{task.title}</h4>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                <span>{task.priority}</span>
-                                {task.assignedTo && <span>👤 {task.assignedTo.name}</span>}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>Priority: {task.priority}</span>
+                                  {task.assignedTo && <span>👤 {task.assignedTo.name}</span>}
+                                </div>
+                                {task.dueDate && <span>📅 Due: {new Date(task.dueDate).toLocaleDateString()}</span>}
                               </div>
                             </div>
                           )}
@@ -215,11 +230,21 @@ const ProjectBoard = () => {
             ))}
           </div>
         </DragDropContext>
+
+        {/* Pagination */}
+        {totalTasks > 20 && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '2rem', padding: '1rem', backgroundColor: 'var(--card-bg)', borderRadius: '8px', boxShadow: 'var(--shadow)' }}>
+            <button className="btn" disabled={page === 1} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>Previous</button>
+            <span style={{ fontWeight: 'bold' }}>Page {page} of {Math.ceil(totalTasks / 20)}</span>
+            <button className="btn" disabled={page >= Math.ceil(totalTasks / 20)} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>Next</button>
+          </div>
+        )}
       </div>
 
       {selectedTask && (
         <TaskModal 
           task={selectedTask} 
+          members={projectMembers}
           onClose={() => {
             setSelectedTask(null);
             fetchBoardAndTasks(); // refresh to get new history/comments if updated

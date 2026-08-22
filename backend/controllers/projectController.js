@@ -9,9 +9,35 @@ export const createProject = async (req, res) => {
       name,
       description,
       owner: req.user._id,
-      members: [req.user._id] // owner is part of members automatically
+      members: [req.user._id] 
     });
     res.status(201).json({ success: true, data: project });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const project = await Project.findOneAndUpdate(
+      { _id: id, owner: req.user._id },
+      req.body,
+      { new: true }
+    );
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found or unauthorized' });
+    res.json({ success: true, data: project });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const project = await Project.findOneAndDelete({ _id: id, owner: req.user._id });
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found or unauthorized' });
+    res.json({ success: true, message: 'Project deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

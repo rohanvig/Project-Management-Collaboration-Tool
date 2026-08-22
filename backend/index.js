@@ -6,6 +6,7 @@ import authRoutes from './routes/authRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import boardRoutes from './routes/boardRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
+import commentRoutes from './routes/commentRoutes.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
 const app = express();
@@ -16,6 +17,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/boards', boardRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/comments', commentRoutes);
 
 // basic test route
 app.get('/', (req, res) => {

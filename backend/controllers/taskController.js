@@ -23,7 +23,7 @@ export const createTask = async (req, res) => {
 // Handles fetching, filtering, and searching
 export const getTasks = async (req, res) => {
   try {
-    const { boardId, status, priority, assignedTo, search } = req.query;
+    const { boardId, status, priority, assignedTo, search, page = 1, limit = 100 } = req.query;
     let query = {};
     
     if (boardId) query.boardId = boardId;
@@ -31,16 +31,22 @@ export const getTasks = async (req, res) => {
     if (priority) query.priority = priority;
     if (assignedTo) query.assignedTo = assignedTo;
     
-    // Text search (simple regex for title)
     if (search) {
       query.title = { $regex: search, $options: 'i' };
     }
 
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
     const tasks = await Task.find(query)
       .populate('assignedTo', 'name email')
-      .populate('createdBy', 'name email');
+      .populate('createdBy', 'name email')
+      .populate('activityHistory.userId', 'name')
+      .skip(skip)
+      .limit(parseInt(limit));
       
-    res.json({ success: true, data: tasks });
+    const total = await Task.countDocuments(query);
+      
+    res.json({ success: true, data: tasks, pagination: { page: parseInt(page), limit: parseInt(limit), total } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -52,14 +58,22 @@ export const updateTask = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const task = await Task.findByIdAndUpdate(id, updates, {
-      new: true,
-      runValidators: true
-    });
-
+    const task = await Task.findById(id);
     if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
+    
+    let historyAction = 'Task updated';
+    if (updates.status && updates.status !== task.status) {
+      historyAction = `Moved to ${updates.status}`;
+    } else if (updates.assignedTo && String(updates.assignedTo) !== String(task.assignedTo)) {
+      historyAction = 'Assigned to new user';
+    }
 
-    res.json({ success: true, data: task });
+    const updatedTask = await Task.findByIdAndUpdate(id, {
+      ...updates,
+      $push: { activityHistory: { action: historyAction, userId: req.user._id } }
+    }, { new: true, runValidators: true });
+
+    res.json({ success: true, data: updatedTask });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

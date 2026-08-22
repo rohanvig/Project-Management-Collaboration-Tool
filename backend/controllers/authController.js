@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { generateAccessToken, generateRefreshToken } from '../utils/generateToken.js';
 
 export const registerUser = async (req, res) => {
@@ -57,5 +58,20 @@ export const loginUser = async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const refresh = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(401).json({ success: false, message: 'No refresh token provided' });
+
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) return res.status(401).json({ success: false, message: 'User not found' });
+
+    res.json({ success: true, accessToken: generateAccessToken(user._id) });
+  } catch (err) {
+    res.status(403).json({ success: false, message: 'Invalid or expired refresh token' });
   }
 };

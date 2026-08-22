@@ -19,11 +19,13 @@ const ProjectBoard = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [userFilter, setUserFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
   const [page, setPage] = useState(1);
   const [totalTasks, setTotalTasks] = useState(0);
   const [projectMembers, setProjectMembers] = useState([]);
 
-  const fetchBoardAndTasks = async () => {
+  const fetchBoardAndProject = async () => {
     try {
       let res = await api.get(`/boards/${projectId}`);
       let currentBoard = res.data.data[0];
@@ -34,14 +36,22 @@ const ProjectBoard = () => {
       }
       setBoard(currentBoard);
 
-      // Fetch project details for members
       const projRes = await api.get('/projects');
       const project = projRes.data.data.find(p => p._id === projectId);
       if (project) setProjectMembers(project.members);
+    } catch (err) {
+      console.error('Failed to load board/project', err);
+    }
+  };
 
-      let url = `/tasks?boardId=${currentBoard._id}&page=${page}&limit=20`;
+  const fetchTasksData = async () => {
+    if (!board) return;
+    try {
+      let url = `/tasks?boardId=${board._id}&page=${page}&limit=20`;
       if (search) url += `&search=${search}`;
       if (priorityFilter) url += `&priority=${priorityFilter}`;
+      if (userFilter) url += `&assignedTo=${userFilter}`;
+      if (dateFilter) url += `&dueDate=${dateFilter}`;
 
       const taskRes = await api.get(url);
       const allTasks = taskRes.data.data;
@@ -54,13 +64,17 @@ const ProjectBoard = () => {
       });
       setTasks(grouped);
     } catch (err) {
-      console.error('Failed to load board', err);
+      console.error('Failed to load tasks', err);
     }
   };
 
   useEffect(() => {
-    fetchBoardAndTasks();
-  }, [projectId, search, priorityFilter, page]);
+    fetchBoardAndProject();
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchTasksData();
+  }, [board, search, priorityFilter, userFilter, dateFilter, page]);
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -117,7 +131,6 @@ const ProjectBoard = () => {
     <div>
       <Navbar />
       <div className="container" style={{ paddingTop: 0, maxWidth: '1400px' }}>
-        {/* Top Header & Invite */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 className="heading" style={{ margin: 0 }}>Project Board</h2>
           
@@ -133,15 +146,14 @@ const ProjectBoard = () => {
           </form>
         </div>
 
-        {/* Filters & Add Task */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '2rem', backgroundColor: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', boxShadow: 'var(--shadow)' }}>
-          <div style={{ display: 'flex', gap: '1rem', flex: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '2rem', backgroundColor: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', boxShadow: 'var(--shadow)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flex: 1, flexWrap: 'wrap' }}>
             <input 
               type="text" 
               placeholder="Search tasks..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', minWidth: '200px' }}
+              style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', minWidth: '150px', flex: 1 }}
             />
             <select 
               value={priorityFilter} 
@@ -153,6 +165,22 @@ const ProjectBoard = () => {
               <option value="Medium">Medium</option>
               <option value="High">High</option>
             </select>
+            <select 
+              value={userFilter} 
+              onChange={(e) => setUserFilter(e.target.value)}
+              style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}
+            >
+              <option value="">All Users</option>
+              {projectMembers.map(m => (
+                <option key={m._id} value={m._id}>{m.name}</option>
+              ))}
+            </select>
+            <input 
+              type="date" 
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}
+            />
           </div>
 
           <form onSubmit={handleCreateTask} style={{ display: 'flex', gap: '0.5rem' }}>
@@ -167,8 +195,7 @@ const ProjectBoard = () => {
           </form>
         </div>
 
-        {/* Kanban Board */}
-        <DragDropContext onDragEnd={onDragEnd}>
+        <DragDropContext onDragEnd={handleDragEnd}>
           <div style={{ display: 'flex', gap: '1.5rem', overflowX: 'auto', paddingBottom: '1rem', minHeight: '60vh' }}>
             {columns.map(columnId => (
               <div key={columnId} style={{ flex: 1, minWidth: '300px', backgroundColor: '#e5e7eb', borderRadius: '8px', padding: '1rem' }}>
@@ -247,7 +274,7 @@ const ProjectBoard = () => {
           members={projectMembers}
           onClose={() => {
             setSelectedTask(null);
-            fetchBoardAndTasks(); // refresh to get new history/comments if updated
+            fetchTasksData();
           }} 
         />
       )}

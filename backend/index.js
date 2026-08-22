@@ -8,6 +8,9 @@ import boardRoutes from './routes/boardRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import commentRoutes from './routes/commentRoutes.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
+import swaggerUi from 'swagger-ui-express';
+import yaml from 'yamljs';
+import path from 'path';
 
 const app = express();
 app.use(cors());
@@ -19,10 +22,12 @@ app.use('/api/boards', boardRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/comments', commentRoutes);
 
-// basic test route
 app.get('/', (req, res) => {
   res.send('API is running...');
 });
+
+const swaggerDocument = yaml.load(path.join(process.cwd(), '../swagger.yaml'));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use(errorHandler);
 

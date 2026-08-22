@@ -33,7 +33,6 @@ body {
   line-height: 1.5;
 }
 
-/* Global utility classes to keep components simple */
 .container {
   max-width: 1200px;
   margin: 0 auto;

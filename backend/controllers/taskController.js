@@ -20,16 +20,16 @@ export const createTask = async (req, res) => {
   }
 };
 
-// Handles fetching, filtering, and searching
 export const getTasks = async (req, res) => {
   try {
-    const { boardId, status, priority, assignedTo, search, page = 1, limit = 100 } = req.query;
+    const { boardId, status, priority, assignedTo, dueDate, search, page = 1, limit = 100 } = req.query;
     let query = {};
     
     if (boardId) query.boardId = boardId;
     if (status) query.status = status;
     if (priority) query.priority = priority;
     if (assignedTo) query.assignedTo = assignedTo;
+    if (dueDate) query.dueDate = dueDate;
     
     if (search) {
       query.title = { $regex: search, $options: 'i' };
@@ -52,7 +52,6 @@ export const getTasks = async (req, res) => {
   }
 };
 
-// Handles status changes / drag-and-drop
 export const updateTask = async (req, res) => {
   try {
     const { id } = req.params;
